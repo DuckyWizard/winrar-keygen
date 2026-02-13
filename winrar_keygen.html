@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WinRAR Keygen (JS Port)</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --input-bg: #2d2d2d;
+            --input-border: #3d3d3d;
+            --accent: #4caf50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: #252526;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: var(--accent);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.5rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: var(--text-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: monospace;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        #output {
+            margin-top: 1.5rem;
+            height: 200px;
+            resize: vertical;
+        }
+
+        .status {
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+            min-height: 1.2em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>WinRAR Keygen</h1>
+
+        <div class="form-group">
+            <label for="username">User Name</label>
+            <input type="text" id="username" value="User" placeholder="Enter name...">
+        </div>
+
+        <div class="form-group">
+            <label for="licenseType">License Type</label>
+            <select id="licenseType">
+                <option value="Single PC usage license">Single PC usage license</option>
+                <option value="Unlimited Company License">Unlimited Company License</option>
+            </select>
+        </div>
+
+        <button onclick="generate()">Generate Key</button>
+
+        <textarea id="output" readonly placeholder="Key will appear here..."></textarea>
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        // ==========================================
+        // UTILS
+        // ==========================================
+        function stringToBytes(str) {
+            const bytes = [];
+            for (let i = 0; i < str.length; i++) {
+                bytes.push(str.charCodeAt(i) & 0xFF);
+            }
+            return new Uint8Array(bytes);
+        }
+
+        function hexToBytes(hex) {
+            const bytes = [];
+            for (let c = 0; c < hex.length; c += 2)
+                bytes.push(parseInt(hex.substr(c, 2), 16));
+            return new Uint8Array(bytes);
+        }
+
+        // ==========================================
+        // SHA-1 Implementation
+        // ==========================================
+        class Sha1 {
+            static hash(msgBytes) {
+                const l = msgBytes.length * 8;
+                let k = msgBytes.length;
+                const padded = new Uint8Array(((k + 8) >> 6) * 64 + 64);
+                padded.set(msgBytes);
+                padded[k] = 0x80;
+
+                const view = new DataView(padded.buffer);
+                view.setUint32(padded.length - 4, l, false);
+
+                const w = new Uint32Array(80);
+                let h0 = 0x67452301;
+                let h1 = 0xEFCDAB89;
+                let h2 = 0x98BADCFE;
+                let h3 = 0x10325476;
+                let h4 = 0xC3D2E1F0;
+
+                for (let i = 0; i < padded.length; i += 64) {
+                    for (let j = 0; j < 16; j++) {
+                        w[j] = (padded[i + j * 4] << 24) | (padded[i + j * 4 + 1] << 16) | (padded[i + j * 4 + 2] << 8) | (padded[i + j * 4 + 3]);
+                    }
+                    for (let j = 16; j < 80; j++) {
+                        w[j] = Sha1.rol(w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16], 1);
+                    }
+
+                    let a = h0;
+                    let b = h1;
+                    let c = h2;
+                    let d = h3;
+                    let e = h4;
+
+                    for (let j = 0; j < 80; j++) {
+                        let f, k_val;
+                        if (j < 20) { f = (b & c) | ((~b) & d); k_val = 0x5A827999; }
+                        else if (j < 40) { f = b ^ c ^ d; k_val = 0x6ED9EBA1; }
+                        else if (j < 60) { f = (b & c) | (b & d) | (c & d); k_val = 0x8F1BBCDC; }
+                        else { f = b ^ c ^ d; k_val = 0xCA62C1D6; }
+
+                        let temp = (Sha1.rol(a, 5) + f + e + k_val + w[j]) >>> 0;
+                        e = d; d = c; c = Sha1.rol(b, 30); b = a; a = temp;
+                    }
+
+                    h0 = (h0 + a) >>> 0;
+                    h1 = (h1 + b) >>> 0;
+                    h2 = (h2 + c) >>> 0;
+                    h3 = (h3 + d) >>> 0;
+                    h4 = (h4 + e) >>> 0;
+                }
+
+                const result = new Uint8Array(20);
+                const resView = new DataView(result.buffer);
+                resView.setUint32(0, h0, false);
+                resView.setUint32(4, h1, false);
+                resView.setUint32(8, h2, false);
+                resView.setUint32(12, h3, false);
+                resView.setUint32(16, h4, false);
+                return result;
+            }
+
+            static rol(num, cnt) {
+                return (num << cnt) | (num >>> (32 - cnt));
+            }
+        }
+
+        // ==========================================
+        // CRC32 Implementation
+        // ==========================================
+        const crcTable = [];
+        for (let i = 0; i < 256; i++) {
+            let c = i;
+            for (let j = 0; j < 8; j++) {
+                c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+            }
+            crcTable[i] = c >>> 0;
+        }
+
+        function crc32(bytes) {
+            let crc = 0xFFFFFFFF;
+            for (let i = 0; i < bytes.length; i++) {
+                crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xFF];
+            }
+            return (crc ^ 0xFFFFFFFF) >>> 0;
+        }
+
+        // ==========================================
+        // GF(2^15) Implementation
+        // ==========================================
+        const GF2p15_ORDER = 0x7FFF;
+        const GF2p15_LogTable = new Uint16Array(0x8000);
+        const GF2p15_ExpTable = new Uint16Array(0x8000);
+
+        function initGF2p15() {
+            GF2p15_ExpTable[0] = 1;
+            for (let i = 1; i < GF2p15_ORDER; i++) {
+                let temp = (GF2p15_ExpTable[i - 1] * 2) & 0xFFFF;
+                if (temp & 0x8000) {
+                    temp ^= 0x8003;
+                }
+                GF2p15_ExpTable[i] = temp;
+            }
+            GF2p15_ExpTable[GF2p15_ORDER] = 0;
+            for (let i = 0; i < GF2p15_ORDER; i++) {
+                GF2p15_LogTable[GF2p15_ExpTable[i]] = i;
+            }
+        }
+        initGF2p15();
+
+        // ==========================================
+        // GFElement Class
+        // ==========================================
+        class GFElement {
+            constructor() {
+                this.items = new Uint16Array(17);
+            }
+
+            clone() {
+                const c = new GFElement();
+                c.items.set(this.items);
+                return c;
+            }
+
+            static zero() { return new GFElement(); }
+            static one() {
+                const e = new GFElement();
+                e.items[0] = 1;
+                return e;
+            }
+
+            static fromBytes(bytes) {
+                if (bytes.length !== 32) throw new Error("Buf size 32 expected");
+                const e = new GFElement();
+                const buf = bytes;
+
+                let val_ptr = 0;
+                let left_bits = 15;
+                let current_val = 0;
+
+                for (let i = 0; i < 32; i++) {
+                    let b = buf[i];
+
+                    if (left_bits === 15) {
+                        current_val = b;
+                        left_bits = 7;
+                    } else if (left_bits > 8) {
+                        current_val |= (b << (15 - left_bits));
+                        left_bits -= 8;
+                    } else {
+                        current_val |= ((b << (15 - left_bits)) & 0x7FFF);
+                        e.items[val_ptr] = current_val;
+                        val_ptr++;
+                        current_val = b >> left_bits;
+                        left_bits = 7 + left_bits;
+                    }
+                }
+                return e;
+            }
+
+            // Helper for initializing from C++ raw definition (17 * uint16)
+            static fromRawHex(hex) {
+                if (hex.length !== 68) throw new Error("Raw hex size 68 expected (17 uint16s)");
+                const e = new GFElement();
+                for (let i = 0; i < 17; i++) {
+                    const chunk = hex.substr(i * 4, 4);
+                    // C++ was big endian for these constants? 
+                    // No, "38CC" -> 0x38CC.
+                    e.items[i] = parseInt(chunk, 16);
+                }
+                return e;
+            }
+
+            dump() {
+                const buffer = new Uint8Array(32);
+                let ptr = 0;
+                let left_bits = 8;
+
+                for (let i = 0; i < 17; ++i) {
+                    let val = this.items[i];
+                    let low8 = val & 0xFF;
+                    let high7 = val >> 8;
+
+                    if (left_bits === 8) {
+                        buffer[ptr] = low8;
+                        ptr++;
+                    } else {
+                        buffer[ptr] |= (low8 << (8 - left_bits));
+                        ptr++;
+                        buffer[ptr] = (low8 >> left_bits);
+                    }
+
+                    if (left_bits === 8) {
+                        buffer[ptr] = high7;
+                        left_bits = 1;
+                    } else if (left_bits === 7) {
+                        buffer[ptr] |= (high7 << 1);
+                        ptr++;
+                        left_bits = 8;
+                    } else {
+                        buffer[ptr] |= (high7 << (8 - left_bits));
+                        ptr++;
+                        buffer[ptr] = (high7 >> left_bits);
+                        left_bits = 1 + left_bits;
+                    }
+                }
+                return buffer;
+            }
+
+            isZero() {
+                for (let i = 0; i < 17; i++) if (this.items[i] !== 0) return false;
+                return true;
+            }
+
+            add(other) {
+                const res = new GFElement();
+                for (let i = 0; i < 17; i++) res.items[i] = this.items[i] ^ other.items[i];
+                return res;
+            }
+
+            addAssign(other) {
+                for (let i = 0; i < 17; i++) this.items[i] ^= other.items[i];
+            }
+
+            multiply(other) {
+                const temp = new Uint16Array(33);
+                for (let i = 0; i < 17; i++) {
+                    if (this.items[i] !== 0) {
+                        for (let j = 0; j < 17; j++) {
+                            if (other.items[j] !== 0) {
+                                let g = GF2p15_LogTable[this.items[i]] + GF2p15_LogTable[other.items[j]];
+                                if (g >= 0x7FFF) g -= 0x7FFF;
+                                temp[i + j] ^= GF2p15_ExpTable[g];
+                            }
+                        }
+                    }
+                }
+
+                for (let i = 32; i >= 17; --i) {
+                    if (temp[i] !== 0) {
+                        temp[i - 17] ^= temp[i];
+                        temp[i - 14] ^= temp[i];
+                        temp[i] = 0;
+                    }
+                }
+
+                const res = new GFElement();
+                res.items.set(temp.subarray(0, 17));
+                return res;
+            }
+
+            square() {
+                return this.multiply(this);
+            }
+
+            inverse() {
+                const B = new Uint16Array(34); B[0] = 1;
+                const C = new Uint16Array(34);
+                const F = new Uint16Array(34); F.set(this.items);
+                const G = new Uint16Array(34); G[0] = 1; G[3] = 1; G[17] = 1;
+
+                let degF = 0;
+                let isZero = true;
+                for (let i = 0; i < 17; i++) {
+                    if (F[i]) { degF = i; isZero = false; }
+                }
+                if (isZero) throw new Error("Div by zero");
+
+                let degG = 17;
+                let degB = 0;
+                let degC = 0;
+
+                const addScale = (Dst, degDst, Alpha, j, Src, degSrc) => {
+                    let logAlpha = GF2p15_LogTable[Alpha];
+                    let newDeg = degDst;
+
+                    for (let i = 0; i <= degSrc; i++) {
+                        if (Src[i]) {
+                            let g = logAlpha + GF2p15_LogTable[Src[i]];
+                            if (g >= 0x7FFF) g -= 0x7FFF;
+                            let val = GF2p15_ExpTable[g];
+                            let idx = i + j;
+                            Dst[idx] ^= val;
+                            if (Dst[idx] && idx > newDeg) newDeg = idx;
+                        }
+                    }
+                    while (newDeg > 0 && Dst[newDeg] === 0) newDeg--;
+                    return newDeg;
+                };
+
+                while (true) {
+                    if (degF === 0) {
+                        const res = new GFElement();
+                        let logF0 = GF2p15_LogTable[F[0]];
+                        for (let i = 0; i <= degB; i++) {
+                            if (B[i]) {
+                                let g = GF2p15_LogTable[B[i]] - logF0;
+                                if (g < 0) g += 0x7FFF;
+                                res.items[i] = GF2p15_ExpTable[g];
+                            }
+                        }
+                        return res;
+                    }
+
+                    if (degF < degG) {
+                        let tmp = new Uint16Array(F); F.set(G); G.set(tmp);
+                        let td = degF; degF = degG; degG = td;
+                        tmp = new Uint16Array(B); B.set(C); C.set(tmp);
+                        td = degB; degB = degC; degC = td;
+                    }
+
+                    let j = degF - degG;
+                    let g = GF2p15_LogTable[F[degF]] - GF2p15_LogTable[G[degG]];
+                    if (g < 0) g += 0x7FFF;
+                    let Alpha = GF2p15_ExpTable[g];
+
+                    degF = addScale(F, degF, Alpha, j, G, degG);
+                    degB = addScale(B, degB, Alpha, j, C, degC);
+                }
+            }
+        }
+
+        // ==========================================
+        // Elliptic Curve Classes
+        // ==========================================
+        class ECPoint {
+            constructor(curve, x, y) {
+                this.curve = curve;
+                this.x = x;
+                this.y = y;
+            }
+
+            static infinity(curve) {
+                const p = new ECPoint(curve, GFElement.zero(), GFElement.zero());
+                p.isInf = true;
+                return p;
+            }
+
+            isInfinity() { return !!this.isInf || (this.x.isZero() && this.y.isZero()); }
+
+            add(other) {
+                if (this.isInfinity()) return other;
+                if (other.isInfinity()) return this;
+
+                let sameX = true;
+                for (let i = 0; i < 17; i++) if (this.x.items[i] !== other.x.items[i]) { sameX = false; break; }
+
+                if (sameX) {
+                    let sameY = true;
+                    for (let i = 0; i < 17; i++) if (this.y.items[i] !== other.y.items[i]) { sameY = false; break; }
+                    if (sameY) return this.double();
+                    return ECPoint.infinity(this.curve);
+                }
+
+                const num = this.y.add(other.y);
+                const den = this.x.add(other.x);
+                const lambda = num.multiply(den.inverse());
+
+                const x3 = lambda.square();
+                x3.addAssign(lambda);
+                x3.addAssign(this.x);
+                x3.addAssign(other.x);
+                x3.addAssign(this.curve.a);
+
+                const y3 = lambda.multiply(this.x.add(x3));
+                y3.addAssign(x3);
+                y3.addAssign(this.y);
+
+                return new ECPoint(this.curve, x3, y3);
+            }
+
+            double() {
+                if (this.isInfinity()) return this;
+                if (this.x.isZero()) return ECPoint.infinity(this.curve);
+
+                const lambda = this.x.add(this.y.multiply(this.x.inverse()));
+
+                const x3 = lambda.square();
+                x3.addAssign(lambda);
+                x3.addAssign(this.curve.a);
+
+                const la1 = lambda.add(GFElement.one());
+                const y3 = this.x.square().add(la1.multiply(x3));
+
+                return new ECPoint(this.curve, x3, y3);
+            }
+
+            multiply(scalar) {
+                let R = ECPoint.infinity(this.curve);
+                let T = this;
+                let n = scalar;
+
+                while (n > 0n) {
+                    if (n & 1n) R = R.add(T);
+                    T = T.double();
+                    n >>= 1n;
+                }
+                return R;
+            }
+        }
+
+        class EllipticCurve {
+            constructor() {
+                this.a = GFElement.zero();
+                this.b = GFElement.zero();
+                this.b.items[0] = 161;
+
+                this.order = BigInt("0x1026dd85081b82314691ced9bbec30547840e4bf72d8b5e0d258442bbcd31");
+
+                this.G = new ECPoint(this,
+                    GFElement.fromRawHex("38CC052F251045AA1B89446848820D674FEB55CE00254CB70CC259DC289E65E356FD"),
+                    GFElement.fromRawHex("31A765F218C43412738854C1539B4A024D0712D679113B5E4F0E216F2BF2197420DA")
+                );
+
+                this.privateKey = BigInt("0x59fe6abcca90bdb95f0105271fa85fb9f11f467450c1ae9044b7fd61d65e");
+            }
+        }
+
+        // Lazy Singleton using getCurve() to avoid TDZ issues
+        let _CURVE = null;
+        function getCurve() {
+            if (!_CURVE) {
+                console.log("Initializing Curve...");
+                _CURVE = new EllipticCurve();
+                console.log("Curve Initialized.");
+            }
+            return _CURVE;
+        }
+
+        // ==========================================
+        // Key Generation
+        // ==========================================
+
+        function generatePrivateKey(seedBytes) {
+            const generator = new Uint32Array(6);
+            const rawPrivateKey = new Uint16Array(15);
+
+            if (seedBytes && seedBytes.length > 0) {
+                const sha1 = Sha1.hash(seedBytes);
+                const view = new DataView(sha1.buffer);
+                for (let i = 0; i < 5; i++) {
+                    generator[i + 1] = view.getUint32(i * 4, false);
+                }
+            } else {
+                generator[1] = 0xeb3eb781;
+                generator[2] = 0x50265329;
+                generator[3] = 0xdc5ef4a3;
+                generator[4] = 0x6847b9d5;
+                generator[5] = 0xcde43b4c;
+            }
+
+            for (let i = 0; i < 15; i++) {
+                generator[0] = i + 1;
+                const genBytes = new Uint8Array(24);
+                const view = new DataView(genBytes.buffer);
+                for (let k = 0; k < 6; k++) view.setUint32(k * 4, generator[k], true);
+
+                const digest = Sha1.hash(genBytes);
+                const viewD = new DataView(digest.buffer);
+                const val32 = viewD.getUint32(0, false);
+                rawPrivateKey[i] = val32 & 0xFFFF;
+            }
+
+            let bigVal = 0n;
+            for (let i = 0; i < 15; i++) {
+                bigVal |= BigInt(rawPrivateKey[i]) << BigInt(i * 16);
+            }
+            return bigVal;
+        }
+
+        function generatePublicKeySM2Compressed(messageBytes) {
+            const priv = generatePrivateKey(messageBytes);
+            const pub = getCurve().G.multiply(priv);
+
+            const xBytes = pub.x.dump();
+            const z = pub.y.multiply(pub.x.inverse());
+            const zBytes = z.dump();
+
+            let format = 0x02;
+            if (zBytes[0] & 1) format = 0x03;
+
+            // Reconstruct X
+            let xBuf = pub.x.dump();
+            xBuf.reverse();
+
+            let xBig = 0n;
+            for (let b of xBuf) xBig = (xBig << 8n) | BigInt(b);
+
+            xBig <<= 1n; // * 2
+            if (format === 0x03) xBig |= 1n;
+
+            let hex = xBig.toString(16);
+            if (hex.length < 64) hex = hex.padStart(64, '0');
+            return hex;
+        }
+
+        function generateHashInteger(dataBytes) {
+            const sha1 = Sha1.hash(dataBytes);
+            const rawHash = new Uint32Array(10);
+            const view = new DataView(sha1.buffer);
+
+            for (let i = 0; i < 5; i++) {
+                rawHash[i] = view.getUint32(i * 4, false);
+            }
+
+            rawHash[5] = 0x0ffd8d43;
+            rawHash[6] = 0xb4e33c7c;
+            rawHash[7] = 0x53461bd1;
+            rawHash[8] = 0x0f27a546;
+            rawHash[9] = 0x1050d90d;
+
+            const hashBytes = new Uint8Array(40);
+            const hbView = new DataView(hashBytes.buffer);
+            for (let i = 0; i < 10; i++) hbView.setUint32(i * 4, rawHash[i], true);
+
+            let bigVal = 0n;
+            for (let i = 0; i < 30; i++) {
+                bigVal |= BigInt(hashBytes[i]) << BigInt(i * 8);
+            }
+            return bigVal;
+        }
+
+        function sign(dataBytes) {
+            const hash = generateHashInteger(dataBytes);
+            const curve = getCurve();
+
+            while (true) {
+                let randVal = 0n;
+                for (let i = 0; i < 15; i++) {
+                    let r = Math.floor(Math.random() * 65536);
+                    randVal |= BigInt(r) << BigInt(i * 16);
+                }
+
+                const point = curve.G.multiply(randVal);
+                if (point.isInfinity()) continue;
+
+                let xBuf = point.x.dump();
+
+                let r = 0n;
+                for (let i = 0; i < xBuf.length; i++) r |= BigInt(xBuf[i]) << BigInt(i * 8);
+
+                r = (r + hash) % curve.order;
+
+                if (r === 0n || (r + randVal) === curve.order) continue;
+
+                let s = (randVal - (curve.privateKey * r)) % curve.order;
+                if (s < 0n) s += curve.order;
+
+                if (s === 0n) continue;
+
+                return { r, s };
+            }
+        }
+
+        function formatHex60(bigIntVal) {
+            let hex = bigIntVal.toString(16);
+            if (hex.length < 60) hex = hex.padStart(60, '0');
+            return hex;
+        }
+
+        function generate() {
+            const userName = document.getElementById('username').value;
+            const licenseTypeStr = document.getElementById('licenseType').value;
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+
+            status.textContent = "Generating...";
+
+            setTimeout(() => {
+                try {
+                    const regInfo = {};
+                    regInfo.UserName = userName;
+                    regInfo.LicenseType = licenseTypeStr;
+
+                    const tempHex = generatePublicKeySM2Compressed(stringToBytes(userName));
+                    regInfo.Items3 = "60" + tempHex.substring(0, 48);
+
+                    regInfo.Items0 = generatePublicKeySM2Compressed(stringToBytes(regInfo.Items3));
+
+                    regInfo.UID = tempHex.substring(48, 64) + regInfo.Items0.substring(0, 4);
+
+                    while (true) {
+                        const sig = sign(stringToBytes(regInfo.LicenseType));
+                        const rHex = formatHex60(sig.r);
+                        const sHex = formatHex60(sig.s);
+                        if (rHex.length === 60 && sHex.length === 60) {
+                            regInfo.Items1 = "60" + sHex + rHex;
+                            break;
+                        }
+                    }
+
+                    const signMsg = regInfo.UserName + regInfo.Items0;
+                    while (true) {
+                        const sig = sign(stringToBytes(signMsg));
+                        const rHex = formatHex60(sig.r);
+                        const sHex = formatHex60(sig.s);
+                        if (rHex.length === 60 && sHex.length === 60) {
+                            regInfo.Items2 = "60" + sHex + rHex;
+                            break;
+                        }
+                    }
+
+                    const crcMsg = regInfo.LicenseType + regInfo.UserName + regInfo.Items0 + regInfo.Items1 + regInfo.Items2 + regInfo.Items3;
+                    const checksum = (~crc32(stringToBytes(crcMsg))) >>> 0;
+
+                    const hexData =
+                        regInfo.Items0.length + "" +
+                        regInfo.Items1.length + "" +
+                        regInfo.Items2.length + "" +
+                        regInfo.Items3.length + "" +
+                        regInfo.Items0 +
+                        regInfo.Items1 +
+                        regInfo.Items2 +
+                        regInfo.Items3 +
+                        checksum.toString().padStart(10, '0');
+
+                    let out = "RAR registration data\n";
+                    out += regInfo.UserName + "\n";
+                    out += regInfo.LicenseType + "\n";
+                    out += "UID=" + regInfo.UID + "\n";
+
+                    for (let i = 0; i < hexData.length; i += 54) {
+                        out += hexData.substring(i, i + 54) + "\n";
+                    }
+
+                    output.value = out;
+                    status.textContent = "Done!";
+                    status.style.color = "#4caf50";
+                } catch (e) {
+                    console.error(e);
+                    status.textContent = "Error: " + e.message;
+                    status.style.color = "red";
+                }
+            }, 50);
+        }
+
+    </script>
+</body>
+
+</html>
